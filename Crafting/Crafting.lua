@@ -137,24 +137,16 @@ local function attach()
     portrait.RightBorder:SetAllPoints(book.NineSlice.TopRightCorner)
     portrait.RightBorder:Hide()
 
-    -- rank bars sit in HIGH strata: cover only their rectangles so the native portrait and border stay above the page
-    local content = book.BookPage.ProfessionsContentFrame
-    local bars = {book.CraftingPage.RankBar}
-    for _, key in ipairs({"PrimaryProfession1", "PrimaryProfession2", "SecondaryProfession1", "SecondaryProfession2",
-        "SecondaryProfession3"}) do
-        tinsert(bars, content[key].StatusBar)
+    -- other addons put frames on the native pages above our cover (Auctionator's crafting
+    -- cost sits at frame level 520), and the native rank bars sit in HIGH strata, so fade
+    -- the native pages while ours is visible. Alpha, not Hide: Blizzard's code checks which
+    -- page IsShown to know where you are.
+    local function fadeNativePages(faded)
+        book.CraftingPage:SetAlpha(faded and 0 or 1)
+        book.BookPage:SetAlpha(faded and 0 or 1)
     end
-    for _, bar in ipairs(bars) do
-        local cover = CreateFrame("Frame", nil, page)
-        -- border and fill extend below the 18px bar frame
-        cover:SetPoint("TOPLEFT", bar.Border, "TOPLEFT", -2, 2)
-        cover:SetPoint("BOTTOMRIGHT", bar.Border, "BOTTOMRIGHT", 2, -2)
-        cover:SetFrameStrata("HIGH")
-        cover:SetFrameLevel(bar:GetFrameLevel() + 10)
-        cover:SetClipsChildren(true)
-        cover:EnableMouse(true)
-        paint(cover)
-    end
+    page:HookScript("OnShow", function() fadeNativePages(true) end)
+    page:HookScript("OnHide", function() fadeNativePages(false) end)
 
     local function makeTab(name)
         local tab = CreateFrame("Frame", name, book, "LargeSideTabButtonTemplate")
@@ -199,6 +191,9 @@ local function attach()
     end
     local returnTab = makeTab("WhatsTrainingCraftingReturnTab")
     local recipeList = wt.CreateRecipeList(page)
+    -- the list sits in HIGH strata over the whole page: take the mouse there so the faded
+    -- native frames beneath it can't be hovered or clicked
+    recipeList:EnableMouse(true)
 
     local function selectedNativeTab()
         local selected
